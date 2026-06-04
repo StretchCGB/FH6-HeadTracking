@@ -1,32 +1,32 @@
 ============================================================
  NEXUS MODS PAGE COPY - FH6 Head Tracking
+ Version 1.1 - Updated post-launch
+ Author: StretchCGB
  Copy and paste each section into the relevant Nexus field
 ============================================================
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- SHORT DESCRIPTION  (the one-liner under your mod title)
+ SHORT DESCRIPTION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Adds immersive head tracking to FH6 using a Tobii Eye Tracker 5 or any webcam. Look into corners, glance at mirrors — no game files modified.
+Adds immersive head tracking to FH6 using a Tobii Eye Tracker 5, TrackIR, or any webcam. Look into corners, glance at mirrors — no game files modified.
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  FULL DESCRIPTION  (paste into the Description tab on Nexus)
- Uses Nexus BBCode formatting
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [center][img]https://i.imgur.com/PLACEHOLDER.png[/img][/center]
-[color=#f4d03f][b]Replace the image URL above with your own mod banner before publishing[/b][/color]
 
 [center][size=5][b]FH6 Head Tracking[/b][/size]
-[size=3]Tobii Eye Tracker 5 + Webcam Support[/size][/center]
+[size=3]Tobii Eye Tracker 5  •  TrackIR  •  Any Webcam[/size][/center]
 
 [size=1] [/size]
 
 [color=#2ecc71][b]FH6 has no native head tracking support. This mod fixes that.[/b][/color]
 
-Turn your head to look into corners, glance at approaching traffic, or check your mirrors — all using your Tobii Eye Tracker 5 or any standard webcam. The camera follows your head smoothly and returns to centre when you look forward again. No game files are touched.
+Turn your head to look into corners, glance at approaching traffic, or check your mirrors — using your Tobii Eye Tracker 5, TrackIR, or any standard webcam. The camera follows your head smoothly and returns to centre when you look forward again. No game files are touched.
 
 [size=1] [/size]
 
@@ -35,9 +35,10 @@ Turn your head to look into corners, glance at approaching traffic, or check you
 [color=#f4d03f]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/color]
 
 [list]
-[*][b]Two tracking methods[/b] — Tobii Eye Tracker 5 (via OpenTrack) or any webcam (via MediaPipe AI face tracking)
+[*][b]Three tracking methods[/b] — Tobii Eye Tracker 5, TrackIR, or any webcam (via MediaPipe AI face tracking)
+[*][b]Any OpenTrack-compatible tracker supported[/b] — if OpenTrack can read it, this mod can use it
 [*][b]Smooth, natural feel[/b] — non-linear curve means small head turns are precise, big turns give full look
-[*][b]Auto-return to centre[/b] — look forward and the camera follows
+[*][b]Auto-return to centre[/b] — look forward and the camera follows back
 [*][b]Spike filter[/b] — ignores car jolts and direction changes so the camera stays stable
 [*][b]Alt-tab safe[/b] — input is paused the moment FH6 loses focus, your desktop mouse is never affected
 [*][b]No game files modified[/b] — works entirely through FH6's built-in Mouse Free Look system
@@ -53,7 +54,11 @@ Turn your head to look into corners, glance at approaching traffic, or check you
 
 [b]Tobii Eye Tracker 5[/b] — Best accuracy and lowest CPU usage. Requires OpenTrack (free). Recommended if you already own a Tobii.
 
-[b]Webcam[/b] — Works with any webcam you already own. Uses AI face detection (MediaPipe) to estimate head angle. Slightly more CPU usage and less precise than Tobii, but very capable in good lighting. No extra hardware needed.
+[b]TrackIR (any version)[/b] — Fully supported via OpenTrack. Use the Tobii launcher — OpenTrack handles all the input, the script only cares about the UDP data it receives. In OpenTrack set Input to [b]TrackIR[/b] instead of Tobii. Everything else is identical.
+
+[b]Any other OpenTrack-compatible tracker[/b] — FaceTrackNoIR, SteamVR, phone-based trackers, Arduino IMU — if OpenTrack can read it and output UDP on port 4242, this mod will work with it.
+
+[b]Webcam[/b] — Works with any webcam you already own. Uses AI face detection (MediaPipe) to estimate head angle. No OpenTrack needed. Slightly more CPU usage than hardware trackers but very capable in good lighting.
 
 [size=1] [/size]
 
@@ -61,18 +66,19 @@ Turn your head to look into corners, glance at approaching traffic, or check you
 [size=4][b]REQUIREMENTS[/b][/size]
 [color=#f4d03f]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/color]
 
-[b]Both versions:[/b]
+[b]All versions:[/b]
 [list]
 [*]Windows 10 or 11
 [*][url=https://www.python.org/downloads/]Python 3.8+[/url] — tick [b]"Add Python to PATH"[/b] during install
 [*]Forza Horizon 6 (PC)
 [/list]
 
-[b]Tobii version only:[/b]
+[b]Tobii / TrackIR / hardware tracker:[/b]
 [list]
-[*]Tobii Eye Tracker 5 (plugged in and calibrated)
-[*][url=https://gaming.tobii.com/getstarted/]Tobii Experience[/url] app running
-[*][url=https://github.com/opentrack/opentrack/releases]OpenTrack[/url] (latest release)
+[*]Your tracking hardware (plugged in and set up)
+[*][url=https://github.com/opentrack/opentrack/releases]OpenTrack[/url] (latest release, free)
+[*]Tobii users also need [url=https://gaming.tobii.com/getstarted/]Tobii Experience[/url] running
+[*]TrackIR users also need NaturalPoint TrackIR software running
 [/list]
 
 [b]Webcam version only:[/b]
@@ -93,9 +99,9 @@ Turn your head to look into corners, glance at approaching traffic, or check you
 
 [b]Step 3[/b] — Run [font=Courier New]install_dependencies.bat[/font] once to set up packages.
 
-[b]Step 4 (Tobii only)[/b] — Open OpenTrack, go to [b]Profile → Import[/b] and select [font=Courier New]shared\OpenTrack_FH6.ini[/font]
+[b]Step 4 (hardware trackers only)[/b] — Install and open OpenTrack. Go to [b]Profile → Import[/b] and select [font=Courier New]shared\OpenTrack_FH6.ini[/font]. Then set your Input to match your device (Tobii, TrackIR, etc.) and set Output to [b]UDP over network → 127.0.0.1 port 4242[/b].
 
-[b]Step 5[/b] — In FH6, make these settings changes once:
+[b]Step 5[/b] — In FH6 make these one-time settings changes:
 [list]
 [*][b]Settings → Advanced Controls → Mouse Free Look = ON[/b]
 [*][b]Settings → HUD & Gameplay → Drift Camera = ON[/b]
@@ -105,22 +111,22 @@ Turn your head to look into corners, glance at approaching traffic, or check you
 [size=1] [/size]
 
 [color=#f4d03f]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/color]
-[size=4][b]USAGE[/b][/size]
+[size=4][b]USAGE — EVERY SESSION[/b][/size]
 [color=#f4d03f]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/color]
 
-[b]Tobii — every session:[/b]
+[b]Tobii / TrackIR / hardware tracker:[/b]
 [list=1]
-[*]Ensure Tobii Experience is running
-[*]Run [font=Courier New]tobii\Launch_Tobii.bat[/font] (as Administrator)
-[*]Click [b]Start[/b] in OpenTrack
-[*]Launch FH6 and switch to cockpit cam
+[*]Ensure your tracking software is running (Tobii Experience / TrackIR software)
+[*]Run [font=Courier New]tobii\Launch_Tobii.bat[/font] as Administrator
+[*]Click [b]Start[/b] in OpenTrack — check the octopus moves with your head
+[*]Launch FH6 and switch to Driver / Cockpit cam
 [/list]
 
-[b]Webcam — every session:[/b]
+[b]Webcam:[/b]
 [list=1]
-[*]Run [font=Courier New]webcam\Launch_Webcam.bat[/font] (as Administrator)
-[*]Check the preview window — your face should be detected (green text)
-[*]Launch FH6 and switch to cockpit cam
+[*]Run [font=Courier New]webcam\Launch_Webcam.bat[/font] as Administrator
+[*]A preview window opens — confirm your face is detected (green text)
+[*]Launch FH6 and switch to Driver / Cockpit cam
 [/list]
 
 [size=1] [/size]
@@ -145,7 +151,7 @@ CURVE                = 3.0    # Raise for more precision at small angles
 [size=4][b]TROUBLESHOOTING[/b][/size]
 [color=#f4d03f]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/color]
 
-[b]Camera doesn't move[/b] — Check Mouse Free Look is ON. Check you are in cockpit/driver cam. Tobii: make sure OpenTrack is Started.
+[b]Camera doesn't move[/b] — Check Mouse Free Look is ON in Advanced Controls. Check you are in Driver/Cockpit cam. Hardware trackers: make sure OpenTrack is running and you clicked Start.
 
 [b]Camera jerks on direction changes[/b] — Lower [font=Courier New]MAX_DELTA_PER_FRAME[/font] to 5.0
 
@@ -153,7 +159,26 @@ CURVE                = 3.0    # Raise for more precision at small angles
 
 [b]Camera too twitchy[/b] — Raise [font=Courier New]SMOOTHING[/font] to 0.98
 
-[b]Webcam not detecting face[/b] — Improve lighting, move closer to camera (40–80cm), try [font=Courier New]CAMERA_INDEX = 1[/font]
+[b]Camera too slow / unresponsive[/b] — Lower [font=Courier New]SMOOTHING[/font] to 0.93, raise [font=Courier New]MOUSE_SPEED[/font] to 7
+
+[b]Webcam not detecting face[/b] — Improve lighting on your face, move closer to camera (40–80cm), try [font=Courier New]CAMERA_INDEX = 1[/font] if you have multiple cameras
+
+[b]TrackIR not working[/b] — Make sure NaturalPoint TrackIR software is running, then in OpenTrack set Input to [b]TrackIR[/b] and Output to [b]UDP over network (127.0.0.1 port 4242)[/b]
+
+[b]Script shows [standby] and never [IN GAME][/b] — Run as Administrator. Make sure FH6's window is titled exactly [font=Courier New]Forza Horizon 6[/font]
+
+[size=1] [/size]
+
+[color=#f4d03f]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/color]
+[size=4][b]COMING SOON[/b][/size]
+[color=#f4d03f]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/color]
+
+[list]
+[*][b]SteamVR support[/b] — reading headset rotation via OpenVR to drive the camera. Currently being investigated.
+[*][b]Further stability improvements[/b] — ongoing tuning based on community feedback
+[/list]
+
+Have a feature request or bug? Post in the [b]Posts[/b] tab and I'll look into it.
 
 [size=1] [/size]
 
@@ -162,10 +187,11 @@ CURVE                = 3.0    # Raise for more precision at small angles
 [color=#f4d03f]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/color]
 
 [list]
-[*][url=https://github.com/opentrack/opentrack]OpenTrack[/url] — open source head tracking
-[*][url=https://developers.google.com/mediapipe]MediaPipe[/url] by Google — face landmark detection
-[*][url=https://opencv.org/]OpenCV[/url] — camera capture
+[*][url=https://github.com/opentrack/opentrack]OpenTrack[/url] — open source head tracking software
+[*][url=https://developers.google.com/mediapipe]MediaPipe[/url] by Google — AI face landmark detection
+[*][url=https://opencv.org/]OpenCV[/url] — webcam capture
 [*]The FH6 Steam community for discovering the Mouse Free Look workaround
+[*]Catsmecha for confirming TrackIR compatibility
 [/list]
 
 [size=1] [/size]
