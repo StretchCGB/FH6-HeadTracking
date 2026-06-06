@@ -1,31 +1,26 @@
 # ============================================================
-#  Forza Horizon 6 - Tobii Eye Tracker 5 Head Tracking
-#  Version: 1.0.0
-#  Author:  [YourNexusUsername]
-#  Nexus:   https://www.nexusmods.com/forzahorizon6
+#  Forza Horizon 6 - Head Tracking (OpenTrack Edition)
+#  Version: 1.2.0
+#  Author:  StretchCGB
+#  Nexus:   https://www.nexusmods.com/forzahorizon6/mods/288
 #
-# Compatible with any OpenTrack input source:
+#  Compatible with any OpenTrack input source:
 #   - Tobii Eye Tracker 5 (via Tobii Experience)
 #   - TrackIR (via NaturalPoint software)
 #   - Any other OpenTrack-supported tracker
 #
 #  Requirements:
-#    - Tobii Eye Tracker 5 (plugged in + calibrated)
-#    - Tobii Experience app running
-#    - OpenTrack (input: Tobii Eye Tracker, output: UDP over network)
-#    - Python 3.x
-#    - No additional pip packages needed
+#   - OpenTrack (output: UDP over network, port 4242)
+#   - Python 3.x (no pip packages needed)
 #
 #  FH6 Settings (do once):
-#    Advanced Controls  -> Mouse Free Look  = ON
-#    HUD & Gameplay     -> Drift Camera     = ON
-#    Camera View        -> Driver (cockpit cam)
+#   Advanced Controls -> Mouse Free Look = ON
+#   HUD & Gameplay    -> Drift Camera    = ON
+#   Camera View       -> Driver (cockpit cam)
 #
-#  Launch order every session:
-#    1. Start Tobii Experience
-#    2. Start OpenTrack -> click Start
-#    3. Run this script
-#    4. Launch FH6
+#  Hotkeys while running:
+#   F8     = Pause / Resume tracking (e.g. browsing the map)
+#   Ctrl+C = Stop script completely
 # ============================================================
 
 import socket
@@ -33,6 +28,7 @@ import struct
 import time
 import sys
 import ctypes
+import threading
 
 # ============================================================
 #  CONFIGURATION - Tweak these to your preference
@@ -72,6 +68,10 @@ INVERT_PITCH = False
 
 # OpenTrack UDP port (must match OpenTrack output settings)
 UDP_PORT = 4242
+
+# Hotkey to pause/resume tracking (default: F8)
+# Virtual key codes: F8=0x77, F9=0x78, F10=0x79, Pause=0x13
+PAUSE_KEY = 0x77
 
 # ============================================================
 #  WINDOWS INPUT API
@@ -146,7 +146,8 @@ def draw_bar(value, width=30):
 
 def main():
     print("=" * 58)
-    print("  FH6 Tobii Eye Tracker 5 - Head Tracking  v1.0.0")
+    print("  FH6 Head Tracking (OpenTrack)  v1.2.0")
+    print("  Author: StretchCGB")
     print("=" * 58)
     print("  Smoothing: {}   Dead zone: {}   Curve: {}".format(SMOOTHING, DEAD_ZONE, CURVE))
     print("  Spike filter: {}deg/frame   Speed: {}".format(MAX_DELTA_PER_FRAME, MOUSE_SPEED))
@@ -154,6 +155,9 @@ def main():
     print("  FH6: Advanced Controls -> Mouse Free Look = ON")
     print("  FH6: HUD & Gameplay    -> Drift Camera    = ON")
     print("  FH6: Camera View       -> Driver (cockpit)")
+    print("-" * 58)
+    print("  F8      = Pause / Resume tracking")
+    print("  Ctrl+C  = Stop")
     print("-" * 58)
     print("")
 
@@ -170,7 +174,6 @@ def main():
 
     print("  [OK] Input system ready (safe to alt-tab)")
     print("  Move your head - camera only activates inside FH6.")
-    print("  Ctrl+C to stop.")
     print("")
 
     smooth_yaw   = 0.0
@@ -181,9 +184,35 @@ def main():
     prev_yaw     = 0.0
     prev_pitch   = 0.0
     last_print   = time.time()
+    paused       = False
+    key_was_down = False  # tracks previous F8 state for edge detection
 
     while True:
         try:
+            # --- F8 pause/resume toggle ---
+            # GetAsyncKeyState returns negative if key is currently down
+            key_is_down = bool(ctypes.windll.user32.GetAsyncKeyState(PAUSE_KEY) & 0x8000)
+            if key_is_down and not key_was_down:
+                paused = not paused
+                if paused:
+                    # Release RMB immediately on pause
+                    if rmb_held:
+                        send_input(MOUSEEVENTF_RIGHTUP)
+                        rmb_held  = False
+                        cam_yaw   = 0.0
+                        cam_pitch = 0.0
+                    sys.stdout.write("\r  [PAUSED] F8 to resume                                        \n")
+                    sys.stdout.flush()
+                else:
+                    sys.stdout.write("\r  [RESUMED]                                                     \n")
+                    sys.stdout.flush()
+            key_was_down = key_is_down
+
+            # Skip tracking while paused
+            if paused:
+                time.sleep(0.05)
+                continue
+
             data, _ = sock.recvfrom(48)
 
             if len(data) >= 48:
@@ -255,10 +284,12 @@ def main():
                 # Console display
                 if time.time() - last_print > 0.1:
                     bar = draw_bar(smooth_yaw)
-                    sys.stdout.write("\r  {} {:+5.1f}deg  RMB:{} {}    ".format(
+                    pause_str = " [F8:PAUSED]  " if paused else ""
+                    sys.stdout.write("\r  {} {:+5.1f}deg  RMB:{} {}{}    ".format(
                         bar, raw_yaw,
                         "ON " if rmb_held else "off",
-                        "[IN GAME]" if fh6_focus else "[standby]"))
+                        "[IN GAME]" if fh6_focus else "[standby]",
+                        pause_str))
                     sys.stdout.flush()
                     last_print = time.time()
 
