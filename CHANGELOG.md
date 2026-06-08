@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.3.0 — 2026-06-07
+### Fixed
+- Webcam version now supports both old mediapipe (0.10.x) and new mediapipe (0.11+)
+- `install_dependencies.bat` now pins mediapipe to 0.10.9 to avoid the `AttributeError: module 'mediapipe' has no attribute 'solutions'` error on newer installs
+
+### Changed
+- Webcam script auto-detects mediapipe API version at runtime — no manual changes needed
+
 ## v1.1.0 — 2026-06-02
 ### Changed
 - Renamed `tobii/` folder to `opentrack/` to reflect broader device support
