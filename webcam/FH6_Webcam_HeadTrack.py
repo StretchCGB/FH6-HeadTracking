@@ -26,6 +26,7 @@ import time
 import sys
 import ctypes
 import math
+import os
 
 # ============================================================
 #  CONFIGURATION - Tweak these to your preference
@@ -205,7 +206,7 @@ def main():
     import mediapipe as mp
 
     print("=" * 58)
-    print("  FH6 Webcam Head Tracking  v1.0.0")
+    print("  FH6 Webcam Head Tracking  v1.3.0")
     print("=" * 58)
     print("  Smoothing: {}   Dead zone: {}   Curve: {}".format(SMOOTHING, DEAD_ZONE, CURVE))
     print("-" * 58)
@@ -228,14 +229,50 @@ def main():
     cap.set(cv2.CAP_PROP_FPS, 30)
     print("  [OK] Camera opened.")
 
-    mp_face_mesh = mp.solutions.face_mesh
-    face_mesh    = mp_face_mesh.FaceMesh(
-        max_num_faces=1,
-        refine_landmarks=True,
-        min_detection_confidence=0.6,
-        min_tracking_confidence=0.6
-    )
-    print("  [OK] MediaPipe face mesh ready.")
+    mp_face_mesh = None
+    face_mesh    = None
+
+    # Support both old mediapipe (0.10.x and below uses .solutions)
+    # and new mediapipe (0.11+ uses tasks API)
+    try:
+        mp_face_mesh = mp.solutions.face_mesh
+        face_mesh    = mp_face_mesh.FaceMesh(
+            max_num_faces=1,
+            refine_landmarks=True,
+            min_detection_confidence=0.6,
+            min_tracking_confidence=0.6
+        )
+        print("  [OK] MediaPipe face mesh ready (legacy API).")
+    except AttributeError:
+        # New mediapipe API (0.11+)
+        try:
+            from mediapipe.tasks import python as mp_tasks
+            from mediapipe.tasks.python import vision as mp_vision
+            import urllib.request
+
+            model_path = "face_landmarker.task"
+            if not os.path.exists(model_path):
+                print("  Downloading face landmarker model (~30MB, one time only)...")
+                url = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
+                urllib.request.urlretrieve(url, model_path)
+                print("  [OK] Model downloaded.")
+
+            base_opts  = mp_tasks.BaseOptions(model_asset_path=model_path)
+            opts       = mp_vision.FaceLandmarkerOptions(
+                base_options=base_opts,
+                num_faces=1,
+                min_face_detection_confidence=0.6,
+                min_face_presence_confidence=0.6,
+                min_tracking_confidence=0.6
+            )
+            face_mesh  = mp_vision.FaceLandmarker.create_from_options(opts)
+            mp_face_mesh = "new"
+            print("  [OK] MediaPipe face landmarker ready (new API).")
+        except Exception as e:
+            print("  [ERROR] Could not initialise MediaPipe: {}".format(e))
+            print("  Try: pip install mediapipe==0.10.9")
+            input("  Press Enter to exit...")
+            sys.exit(1)
     print("  [OK] Input system ready.")
     if SHOW_PREVIEW:
         print("  [OK] Preview window enabled (close it or set SHOW_PREVIEW=False to hide).")
@@ -263,15 +300,33 @@ def main():
 
             frame_h, frame_w = frame.shape[:2]
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = face_mesh.process(rgb)
 
             raw_yaw, raw_pitch = 0.0, 0.0
             face_detected = False
 
-            if results.multi_face_landmarks:
-                face_detected = True
-                raw_yaw, raw_pitch = get_head_angles(
-                    results.multi_face_landmarks[0], frame_w, frame_h)
+            if mp_face_mesh == "new":
+                # New mediapipe tasks API
+                import mediapipe as mp
+                mp_image  = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+                detection = face_mesh.detect(mp_image)
+                if detection.face_landmarks:
+                    face_detected = True
+                    # Convert NormalizedLandmark to pixel coords for get_head_angles
+                    class FakeLandmarks:
+                        def __init__(self, landmarks):
+                            self.landmark = [
+                                type('L', (), {'x': l.x, 'y': l.y})()
+                                for l in landmarks
+                            ]
+                    raw_yaw, raw_pitch = get_head_angles(
+                        FakeLandmarks(detection.face_landmarks[0]), frame_w, frame_h)
+            else:
+                # Legacy mediapipe solutions API
+                results = face_mesh.process(rgb)
+                if results.multi_face_landmarks:
+                    face_detected = True
+                    raw_yaw, raw_pitch = get_head_angles(
+                        results.multi_face_landmarks[0], frame_w, frame_h)
 
                 # Spike rejection
                 delta_yaw   = raw_yaw   - prev_yaw
