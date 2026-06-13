@@ -306,12 +306,11 @@ def main():
 
             if mp_face_mesh == "new":
                 # New mediapipe tasks API
-                import mediapipe as mp
-                mp_image  = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+                import mediapipe as mp2
+                mp_image  = mp2.Image(image_format=mp2.ImageFormat.SRGB, data=rgb)
                 detection = face_mesh.detect(mp_image)
                 if detection.face_landmarks:
                     face_detected = True
-                    # Convert NormalizedLandmark to pixel coords for get_head_angles
                     class FakeLandmarks:
                         def __init__(self, landmarks):
                             self.landmark = [
@@ -328,6 +327,7 @@ def main():
                     raw_yaw, raw_pitch = get_head_angles(
                         results.multi_face_landmarks[0], frame_w, frame_h)
 
+            if face_detected:
                 # Spike rejection
                 delta_yaw   = raw_yaw   - prev_yaw
                 delta_pitch = raw_pitch - prev_pitch
