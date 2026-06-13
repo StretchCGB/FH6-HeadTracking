@@ -1,13 +1,17 @@
 # ============================================================
 #  Forza Horizon 6 - Head Tracking (OpenTrack Edition)
-#  Version: 1.2.0
+#  Version: 1.4.0
 #  Author:  StretchCGB
 #  Nexus:   https://www.nexusmods.com/forzahorizon6/mods/288
+#  GitHub:  https://github.com/StretchCGB/FH6-HeadTracking
 #
 #  Compatible with any OpenTrack input source:
 #   - Tobii Eye Tracker 5 (via Tobii Experience)
-#   - TrackIR (via NaturalPoint software)
 #   - Any other OpenTrack-supported tracker
+#
+#  Note: TrackIR is NOT supported by OpenTrack due to legal
+#  issues with NaturalPoint. Use the webcam version instead,
+#  or a different tracker like Tobii, FaceTrackNoIR, etc.
 #
 #  Requirements:
 #   - OpenTrack (output: UDP over network, port 4242)
@@ -20,6 +24,7 @@
 #
 #  Hotkeys while running:
 #   F8     = Pause / Resume tracking (e.g. browsing the map)
+#   F9     = Re-centre camera (snap back to forward view)
 #   Ctrl+C = Stop script completely
 # ============================================================
 
@@ -34,44 +39,70 @@ import threading
 #  CONFIGURATION - Tweak these to your preference
 # ============================================================
 
-# How far you turn your head for the camera to fully pan (degrees)
-# Lower = less head movement needed. Raise if too sensitive.
+# Maximum head angle before camera stops moving (degrees)
+# Tip: lower MAX_YAW to ~25 to stay within cockpit view at all times
+# Raise to ~60+ if you want to look fully sideways or behind
 MAX_YAW   = 45.0
 MAX_PITCH = 25.0
 
-# Ignores tiny head movements below this threshold
-# Increase if camera drifts when your head is still (0.0 - 0.3)
+# Ignores tiny head movements below this threshold (0.0 - 0.3)
+# Increase if camera drifts when your head is still
 DEAD_ZONE = 0.20
 
-# How smoothly the camera follows your head
-# Higher = smoother but slower. Lower = snappier but jittery.
-# Range: 0.80 (responsive) to 0.98 (very smooth)
+# Camera smoothing: 0.0 = instant/raw, 0.98 = very smooth/slow
+# Set to 0.0 to disable smoothing entirely for raw 1:1 tracking
 SMOOTHING = 0.97
 
 # How fast the camera tracks your head position (pixels per frame)
+# Acts as your overall sensitivity / yaw scale
 MOUSE_SPEED = 5
 
-# How fast the camera returns to centre when head is neutral
+# How fast camera returns to centre when head is neutral
 RETURN_SPEED = 3
 
-# Non-linear curve: makes small head movements very precise
-# 1.0 = linear, 2.0 = gentle curve, 3.0 = strong curve
+# Non-linear curve for precision at small angles
+# 1.0 = linear (direct), 2.0 = gentle, 3.0 = very precise at small angles
 CURVE = 3.0
 
-# Maximum degrees the head can move per frame
-# Filters out car jolts on direction changes / bumps
-# Lower = more filtering. Raise if real looks get blocked.
+# Spike filter: max degrees head can move per frame
+# Filters car jolts on direction changes. Lower = more filtering.
 MAX_DELTA_PER_FRAME = 8.0
 
-# Set True if up/down camera feels backwards
+# Invert yaw (left/right) — set True if camera goes wrong way horizontally
+INVERT_YAW = False
+
+# Invert pitch (up/down) — set True if camera goes wrong way vertically
 INVERT_PITCH = False
 
 # OpenTrack UDP port (must match OpenTrack output settings)
 UDP_PORT = 4242
 
-# Hotkey to pause/resume tracking (default: F8)
+# Hotkeys
+# F8 = pause/resume    F9 = recentre    (change VK codes if needed)
 # Virtual key codes: F8=0x77, F9=0x78, F10=0x79, Pause=0x13
-PAUSE_KEY = 0x77
+PAUSE_KEY    = 0x77   # F8
+RECENTRE_KEY = 0x78   # F9
+
+# ── FH6 Telemetry auto-pause ─────────────────────────────
+# FH6 can broadcast telemetry data via UDP while driving.
+# This script can listen for it and automatically pause
+# head tracking during menus, replays, rewinds, and pauses
+# (when telemetry packets stop arriving).
+#
+# To enable:
+#   1. In FH6: Settings -> Extras -> Data Out -> ON
+#              Data Out IP Address: 127.0.0.1
+#              Data Out Port: 5300
+#   2. Set TELEMETRY_AUTO_PAUSE = True below
+#
+# Optionally forward telemetry to another app (e.g. SimHub):
+#   Set TELEMETRY_FORWARD_IP / PORT to the destination
+TELEMETRY_AUTO_PAUSE   = False        # Set True to enable
+TELEMETRY_PORT         = 5300         # Must match FH6 Data Out port
+TELEMETRY_TIMEOUT      = 0.5          # Seconds without packet = paused
+TELEMETRY_FORWARD      = False        # Set True to forward packets
+TELEMETRY_FORWARD_IP   = "127.0.0.1" # Forward destination IP
+TELEMETRY_FORWARD_PORT = 5301         # Forward destination port
 
 # ============================================================
 #  WINDOWS INPUT API
@@ -141,25 +172,73 @@ def draw_bar(value, width=30):
     return "[" + bar + "]"
 
 # ============================================================
+#  TELEMETRY LISTENER
+# ============================================================
+
+_telemetry_last_packet = [0.0]   # shared state with main thread
+_telemetry_forward_sock = None
+
+def telemetry_listener():
+    """
+    Listens for FH6 Data Out UDP packets on TELEMETRY_PORT.
+    Updates _telemetry_last_packet timestamp each time a packet arrives.
+    Optionally forwards packets to another application.
+    """
+    global _telemetry_forward_sock
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(("0.0.0.0", TELEMETRY_PORT))
+    sock.settimeout(1.0)
+
+    if TELEMETRY_FORWARD:
+        _telemetry_forward_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    while True:
+        try:
+            data, _ = sock.recvfrom(4096)
+            _telemetry_last_packet[0] = time.time()
+            if TELEMETRY_FORWARD and _telemetry_forward_sock:
+                _telemetry_forward_sock.sendto(
+                    data, (TELEMETRY_FORWARD_IP, TELEMETRY_FORWARD_PORT))
+        except socket.timeout:
+            pass
+        except Exception:
+            pass
+
+# ============================================================
 #  MAIN
 # ============================================================
 
 def main():
     print("=" * 58)
-    print("  FH6 Head Tracking (OpenTrack)  v1.2.0")
+    print("  FH6 Head Tracking (OpenTrack)  v1.4.0")
     print("  Author: StretchCGB")
     print("=" * 58)
     print("  Smoothing: {}   Dead zone: {}   Curve: {}".format(SMOOTHING, DEAD_ZONE, CURVE))
     print("  Spike filter: {}deg/frame   Speed: {}".format(MAX_DELTA_PER_FRAME, MOUSE_SPEED))
+    if INVERT_YAW:   print("  Yaw:   INVERTED")
+    if INVERT_PITCH: print("  Pitch: INVERTED")
     print("-" * 58)
     print("  FH6: Advanced Controls -> Mouse Free Look = ON")
     print("  FH6: HUD & Gameplay    -> Drift Camera    = ON")
     print("  FH6: Camera View       -> Driver (cockpit)")
     print("-" * 58)
-    print("  F8      = Pause / Resume tracking")
-    print("  Ctrl+C  = Stop")
+    print("  F8  = Pause / Resume tracking")
+    print("  F9  = Re-centre camera")
+    print("  Ctrl+C = Stop")
+    if TELEMETRY_AUTO_PAUSE:
+        print("  [AUTO-PAUSE] Tracking pauses during menus/replays via FH6 telemetry")
+        if TELEMETRY_FORWARD:
+            print("  [FORWARD]    Telemetry -> {}:{}".format(
+                TELEMETRY_FORWARD_IP, TELEMETRY_FORWARD_PORT))
     print("-" * 58)
     print("")
+
+    # Start telemetry listener thread if enabled
+    if TELEMETRY_AUTO_PAUSE:
+        t = threading.Thread(target=telemetry_listener, daemon=True)
+        t.start()
+        print("  [OK] Telemetry listener active on UDP port {}".format(TELEMETRY_PORT))
 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -176,16 +255,17 @@ def main():
     print("  Move your head - camera only activates inside FH6.")
     print("")
 
-    smooth_yaw   = 0.0
-    smooth_pitch = 0.0
-    cam_yaw      = 0.0
-    cam_pitch    = 0.0
-    rmb_held     = False
-    prev_yaw     = 0.0
-    prev_pitch   = 0.0
-    last_print   = time.time()
-    paused       = False
-    key_was_down = False  # tracks previous F8 state for edge detection
+    smooth_yaw        = 0.0
+    smooth_pitch      = 0.0
+    cam_yaw           = 0.0
+    cam_pitch         = 0.0
+    rmb_held          = False
+    prev_yaw          = 0.0
+    prev_pitch        = 0.0
+    last_print        = time.time()
+    paused            = False
+    key_was_down      = False
+    recentre_was_down = False
 
     while True:
         try:
@@ -208,8 +288,30 @@ def main():
                     sys.stdout.flush()
             key_was_down = key_is_down
 
-            # Skip tracking while paused
-            if paused:
+            # --- F9 recentre hotkey ---
+            recentre_down = bool(ctypes.windll.user32.GetAsyncKeyState(RECENTRE_KEY) & 0x8000)
+            if recentre_down and not recentre_was_down:
+                if rmb_held:
+                    send_input(MOUSEEVENTF_RIGHTUP)
+                    rmb_held = False
+                smooth_yaw = smooth_pitch = 0.0
+                cam_yaw    = cam_pitch    = 0.0
+                sys.stdout.write("\r  [RECENTRED]                                                   \n")
+                sys.stdout.flush()
+            recentre_was_down = recentre_down
+
+            # --- Telemetry auto-pause ---
+            # If FH6 telemetry stops (menu, replay, rewind) pause tracking
+            telemetry_paused = (
+                TELEMETRY_AUTO_PAUSE and
+                (time.time() - _telemetry_last_packet[0]) > TELEMETRY_TIMEOUT and
+                _telemetry_last_packet[0] > 0  # only after first packet received
+            )
+
+            if paused or telemetry_paused:
+                if rmb_held:
+                    send_input(MOUSEEVENTF_RIGHTUP)
+                    rmb_held = False
                 time.sleep(0.05)
                 continue
 
@@ -237,6 +339,8 @@ def main():
                 dz_pitch   = apply_dead_zone(norm_pitch, DEAD_ZONE)
                 curved_yaw   = apply_curve(dz_yaw,   CURVE)
                 curved_pitch = apply_curve(dz_pitch, CURVE)
+                if INVERT_YAW:
+                    curved_yaw = -curved_yaw
                 if INVERT_PITCH:
                     curved_pitch = -curved_pitch
                 smooth_yaw   = smooth_val(smooth_yaw,   curved_yaw,   SMOOTHING)
@@ -284,12 +388,17 @@ def main():
                 # Console display
                 if time.time() - last_print > 0.1:
                     bar = draw_bar(smooth_yaw)
-                    pause_str = " [F8:PAUSED]  " if paused else ""
+                    if paused:
+                        status = " [F8:PAUSED]"
+                    elif telemetry_paused:
+                        status = " [TELEM:PAUSED]"
+                    else:
+                        status = ""
                     sys.stdout.write("\r  {} {:+5.1f}deg  RMB:{} {}{}    ".format(
                         bar, raw_yaw,
                         "ON " if rmb_held else "off",
                         "[IN GAME]" if fh6_focus else "[standby]",
-                        pause_str))
+                        status))
                     sys.stdout.flush()
                     last_print = time.time()
 
