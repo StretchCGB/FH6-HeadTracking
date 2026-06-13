@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.4.0 — 2026-06-11
+### Added
+- `INVERT_YAW` setting — for users whose camera goes the wrong way horizontally
+- F9 recentre hotkey — instantly snaps camera back to forward view
+- FH6 telemetry auto-pause — tracking automatically pauses during menus, replays, rewinds (opt-in via `TELEMETRY_AUTO_PAUSE = True`)
+- UDP telemetry forwarding — forward FH6 Data Out packets to SimHub or other apps while mod is active
+- Improved config comments throughout
+
+### Fixed
+- Clarified in header that TrackIR is NOT supported by OpenTrack due to NaturalPoint legal issues
+
+### Changed
+- Version bump to v1.4.0
+
 ## v1.3.0 — 2026-06-07
 ### Fixed
 - Webcam version now supports both old mediapipe (0.10.x) and new mediapipe (0.11+)

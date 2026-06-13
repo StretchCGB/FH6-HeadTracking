@@ -32,8 +32,8 @@ echo.
 python -m pip install opencv-python --upgrade
 
 echo.
-echo  Installing mediapipe (pinned to 0.10.9 for compatibility)...
-python -m pip install "mediapipe==0.10.9"
+echo  Installing mediapipe (pinned to 0.10.35 for compatibility)...
+python -m pip install "mediapipe==0.10.35"
 
 echo.
 echo  ============================================================
